@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TUTTO</title>
+  <style>
+    :root{
+      --bg:#0f172a;
+      --panel:#111827;
+      --panel2:#1f2937;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --primary:#8b5cf6;
+      --danger:#ef4444;
+      --success:#22c55e;
+      --border:rgba(255,255,255,0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body{
+      margin:0;
+      font-family: Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      padding:20px;
+    }
+
+    .container{
+      max-width:1000px;
+      margin:0 auto;
+    }
+
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:18px;
+      margin-bottom:20px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.20);
+    }
+
+    h1{
+      margin:0 0 12px;
+      font-size:2rem;
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    input, select, button{
+      font:inherit;
+      border-radius:10px;
+      border:1px solid var(--border);
+      padding:12px 14px;
+    }
+
+    input, select{
+      background:#0b1220;
+      color:var(--text);
+      min-width:140px;
+      flex:1;
+    }
+
+    button{
+      background:var(--primary);
+      color:white;
+      border:none;
+      cursor:pointer;
+      font-weight:bold;
+    }
+
+    .danger{
+      background:var(--danger);
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:10px;
+    }
+
+    th, td{
+      padding:12px 10px;
+      border-bottom:1px solid var(--border);
+      text-align:left;
+    }
+
+    th{
+      color:var(--muted);
+      font-weight:600;
+      font-size:0.85rem;
+      text-transform:uppercase;
+    }
+
+    .score{
+      display:inline-block;
+      background:rgba(34,197,94,0.15);
+      color:#a7f3d0;
+      font-weight:bold;
+      padding:6px 10px;
+      border-radius:999px;
+    }
+
+    .small-btn{
+      padding:8px 10px;
+      margin-right:6px;
+      font-size:0.85rem;
+      border-radius:8px;
+    }
+
+    .hidden{
+      display:none;
+    }
+
+    @media (max-width: 600px){
+      .row{
+        flex-direction:column;
+        align-items:stretch;
+      }
+      input, select, button{
+        width:100%;
+      }
+      table{
+        display:block;
+        overflow-x:auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel">
+      <h1>TUTTO</h1>
+
+      <div class="row">
+        <input id="playerName" type="text" placeholder="Nombre del jugador" maxlength="20" />
+        <button id="addPlayerBtn">Añadir jugador</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="row">
+        <select id="playerSelect"></select>
+        <input id="pointsInput" type="number" value="0" min="0" />
+        <button id="sumBtn">Sumar puntos</button>
+        <button id="restBtn" class="danger">Restar puntos</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>Pos.</th>
+            <th>Nombre</th>
+            <th>Puntuación</th>
+            <th>Último turno</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaJugadores"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "tuttoScoreboardSimpleV1";
+
+    let players = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [
+      { id: makeId(), name: "Jugador 1", score: 0, lastTurn: 0 },
+      { id: makeId(), name: "Jugador 2", score: 0, lastTurn: 0 }
+    ];
+
+    const playerNameInput = document.getElementById("playerName");
+    const playerSelect = document.getElementById("playerSelect");
+    const pointsInput = document.getElementById("pointsInput");
+    const tablaJugadores = document.getElementById("tablaJugadores");
+
+    function makeId() {
+      return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
+    }
+
+    function sortPlayers() {
+      players.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+    }
+
+    function renderSelect() {
+      playerSelect.innerHTML = "";
+      players.forEach(player => {
+        const option = document.createElement("option");
+        option.value = player.id;
+        option.textContent = player.name;
+        playerSelect.appendChild(option);
+      });
+
+      if (!playerSelect.value && players.length > 0) {
+        playerSelect.value = players[0].id;
+      }
+    }
+
+    function renderTable() {
+      sortPlayers();
+      tablaJugadores.innerHTML = "";
+
+      players.forEach((player, index) => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${player.name}</td>
+          <td><span class="score">${player.score}</span></td>
+          <td>${player.lastTurn}</td>
+          <td>
+            <button class="small-btn" data-action="edit" data-id="${player.id}">Editar</button>
+            <button class="small-btn danger" data-action="delete" data-id="${player.id}">Borrar</button>
+          </td>
+        `;
+
+        tablaJugadores.appendChild(row);
+      });
+
+      renderSelect();
+    }
+
+    function addPlayer() {
+      const name = playerNameInput.value.trim();
+
+      if (!name) {
+        alert("Escribe un nombre.");
+        return;
+      }
+
+      if (players.length >= 10) {
+        alert("Máximo 10 jugadores.");
+        return;
+      }
+
+      players.push({ id: makeId(), name, score: 0, lastTurn: 0 });
+      playerNameInput.value = "";
+      save();
+      renderTable();
+    }
+
+    function editPlayer(id) {
+      const player = players.find(p => p.id === id);
+      if (!player) return;
+
+      const nuevo = prompt("Nuevo nombre:", player.name);
+      if (nuevo === null) return;
+
+      const nombre = nuevo.trim();
+      if (!nombre) {
+        alert("El nombre no puede estar vacío.");
+        return;
+      }
+
+      player.name = nombre;
+      save();
+      renderTable();
+    }
+
+    function deletePlayer(id) {
+      if (players.length <= 2) {
+        alert("Debe haber al menos 2 jugadores.");
+        return;
+      }
+
+      const player = players.find(p => p.id === id);
+      if (!player) return;
+
+      const ok = confirm("¿Eliminar a " + player.name + "?");
+      if (!ok) return;
+
+      players = players.filter(p => p.id !== id);
+      save();
+      renderTable();
+    }
+
+    function sumarPuntos() {
+      const playerId = playerSelect.value;
+      const puntos = Number(pointsInput.value);
+
+      if (!playerId) return;
+      if (!Number.isFinite(puntos) || puntos <= 0) {
+        alert("Introduce un número válido mayor que 0.");
+        return;
+      }
+
+      const player = players.find(p => p.id === playerId);
+      if (!player) return;
+
+      player.score += puntos;
+      player.lastTurn = puntos;
+      save();
+      renderTable();
+      pointsInput.value = 0;
+    }
+
+    function restarPuntos() {
+      const playerId = playerSelect.value;
+      const puntos = Number(pointsInput.value);
+
+      if (!playerId) return;
+      if (!Number.isFinite(puntos) || puntos <= 0) {
+        alert("Introduce un número válido mayor que 0.");
+        return;
+      }
+
+      const player = players.find(p => p.id === playerId);
+      if (!player) return;
+
+      player.score -= puntos;
+      player.lastTurn = -puntos;
+      save();
+      renderTable();
+      pointsInput.value = 0;
+    }
+
+    document.getElementById("addPlayerBtn").addEventListener("click", addPlayer);
+    document.getElementById("sumBtn").addEventListener("click", sumarPuntos);
+    document.getElementById("restBtn").addEventListener("click", restarPuntos);
+
+    document.getElementById("playerName").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") addPlayer();
+    });
+
+    tablaJugadores.addEventListener("click", function(e) {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+
+      if (action === "edit") editPlayer(id);
+      if (action === "delete") deletePlayer(id);
+    });
+
+    renderTable();
+  </script>
+</body>
+</html>
